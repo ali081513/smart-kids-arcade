@@ -195,7 +195,23 @@
 
         // 1. Advanced Math (Double digits)
         function initMath() {
-            let score = 0, rounds = 0;
+            let score = 0, rounds = 0, mode = null;
+            
+            function selectMode() {
+                let title = currentLang === 'zh' ? '揀個難度啦！' : 'Select Level!';
+                let l1 = currentLang === 'zh' ? 'Level 1 (選擇題)' : 'Level 1 (MCQ)';
+                let l2 = currentLang === 'zh' ? 'Level 2 (自己填)' : 'Level 2 (Type)';
+                gameArea.innerHTML = `
+                    <div class="text-3xl font-black mb-8 text-gray-700">${title}</div>
+                    <div class="flex flex-col gap-6 w-full max-w-sm">
+                        <button class="btn-hover bg-green-100 border-4 border-green-300 text-green-700 font-black text-2xl py-6 rounded-3xl" onclick="startMathMode(1)">${l1}</button>
+                        <button class="btn-hover bg-red-100 border-4 border-red-300 text-red-700 font-black text-2xl py-6 rounded-3xl" onclick="startMathMode(2)">${l2}</button>
+                    </div>
+                `;
+            }
+            
+            window.startMathMode = (m) => { mode = m; nextQ(); };
+
             function nextQ() {
                 if(rounds >= 5) {
                     let text = currentLang === 'zh' ? `答啱咗 ${score}/5 題！` : `You got ${score}/5!`;
@@ -203,7 +219,6 @@
                 }
                 rounds++;
                 let qText = currentLang === 'zh' ? `第 ${rounds}/5 題` : `Q ${rounds}/5`;
-                gameArea.innerHTML = `<div class="text-xl font-bold mb-4 text-gray-500">${qText} | ${loc('scoreText')}: ${score}</div>`;
                 
                 let isAdd = Math.random() > 0.5;
                 let n1, n2, ans, op;
@@ -213,53 +228,101 @@
                     n1 = randInt(30, 99); n2 = randInt(10, n1-1); ans = n1-n2; op = '-';
                 }
 
-                const qDiv = document.createElement('div');
-                qDiv.className = 'text-6xl font-black text-purple-600 mb-8 tracking-widest';
-                qDiv.textContent = `${n1} ${op} ${n2} = ?`;
-                gameArea.appendChild(qDiv);
+                let baseHTML = `
+                    <div class="text-xl font-bold mb-4 text-gray-500">${qText} | ${loc('scoreText')}: ${score}</div>
+                    <div class="text-6xl font-black text-purple-600 mb-8 tracking-widest">${n1} ${op} ${n2} = ?</div>
+                `;
 
-                const optsGrid = document.createElement('div'); optsGrid.className = 'grid grid-cols-2 gap-4 w-full max-w-sm';
-                let opts = new Set([ans]);
-                while(opts.size < 4) {
-                    let fake = ans + randInt(-10, 10);
-                    if(fake > 0 && fake !== ans) opts.add(fake);
-                }
-                
-                shuffle(Array.from(opts)).forEach(opt => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn-hover bg-white border-4 border-purple-200 text-3xl font-bold py-6 rounded-2xl shadow-sm text-gray-700';
-                    btn.textContent = opt;
-                    btn.onclick = () => {
-                        if(opt === ans) { score++; showModal('✅', loc('correct'), '', nextQ); }
-                        else { 
-                            let t = currentLang === 'zh' ? `正確答案係 ${ans}！` : `Correct answer is ${ans}!`;
-                            showModal('❌', loc('wrong'), t, nextQ); 
-                        }
+                if(mode === 1) {
+                    gameArea.innerHTML = baseHTML + `<div class="grid grid-cols-2 gap-4 w-full max-w-sm" id="math-opts"></div>`;
+                    let optsGrid = document.getElementById('math-opts');
+                    let opts = new Set([ans]);
+                    while(opts.size < 4) {
+                        let fake = ans + randInt(-10, 10);
+                        if(fake > 0 && fake !== ans) opts.add(fake);
+                    }
+                    shuffle(Array.from(opts)).forEach(opt => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-hover bg-white border-4 border-purple-200 text-3xl font-bold py-6 rounded-2xl shadow-sm text-gray-700';
+                        btn.textContent = opt;
+                        btn.onclick = () => checkAns(opt, ans);
+                        optsGrid.appendChild(btn);
+                    });
+                } else {
+                    // Level 2: iPad-friendly Virtual Numpad
+                    gameArea.innerHTML = baseHTML + `
+                        <div class="w-full max-w-xs flex flex-col items-center">
+                            <div id="math-input" class="w-full h-16 bg-white border-4 border-yellow-400 rounded-2xl mb-4 text-4xl font-black flex items-center justify-center text-gray-800"></div>
+                            <div class="grid grid-cols-3 gap-2 w-full mb-4">
+                                ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation" onclick="typeMath(${n})">${n}</button>`).join('')}
+                                <button class="btn-hover bg-red-100 border-b-4 border-red-300 text-xl font-black py-4 rounded-xl text-red-600 touch-manipulation" onclick="typeMath('C')">C</button>
+                                <button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation" onclick="typeMath(0)">0</button>
+                                <button class="btn-hover bg-green-100 border-b-4 border-green-300 text-2xl font-black py-4 rounded-xl text-green-700 touch-manipulation" onclick="submitMath(${ans})">OK</button>
+                            </div>
+                        </div>
+                    `;
+                    window.currentMathInput = "";
+                    window.typeMath = (val) => {
+                        if(val === 'C') window.currentMathInput = "";
+                        else if(window.currentMathInput.length < 3) window.currentMathInput += val;
+                        document.getElementById('math-input').textContent = window.currentMathInput;
                     };
-                    optsGrid.appendChild(btn);
-                });
-                gameArea.appendChild(optsGrid);
+                    window.submitMath = (correct) => {
+                        if(window.currentMathInput === "") return;
+                        checkAns(parseInt(window.currentMathInput), correct);
+                    };
+                }
             }
-            nextQ();
+            
+            function checkAns(userAns, correctAns) {
+                if(userAns === correctAns) { 
+                    score++; showModal('✅', loc('correct'), '', nextQ); 
+                } else { 
+                    let t = currentLang === 'zh' ? `正確答案係 ${correctAns}！` : `Correct answer is ${correctAns}!`;
+                    showModal('❌', loc('wrong'), t, nextQ); 
+                }
+            }
+            
+            selectMode();
         }
 
         // 2. Guess Number (1-100)
         function initGuessNum() {
             let target = randInt(1, 100), attempts = 0;
+            let history = []; // 新增：用嚟儲存估過嘅數字
             let prompt = currentLang === 'zh' ? '諗緊1到100... 估下係咩？' : 'Thinking of 1-100... Guess!';
             let btnTxt = currentLang === 'zh' ? '估！' : 'Guess';
+            let histTitle = currentLang === 'zh' ? '估過嘅數字：' : 'Guessed Numbers:';
             
             gameArea.innerHTML = `
                 <div class="text-2xl font-bold text-gray-700 mb-6 text-center">${prompt}</div>
                 <input type="number" id="guess-input" class="text-4xl text-center border-4 border-yellow-400 rounded-2xl w-48 py-4 mb-4 font-black" min="1" max="100">
                 <button id="guess-btn" class="btn-hover bg-yellow-400 text-yellow-900 font-black text-2xl py-3 px-8 rounded-full shadow-lg border-b-4 border-yellow-600">${btnTxt}</button>
-                <div id="guess-hint" class="mt-8 text-3xl font-black text-pink-500 h-10"></div>
+                <div id="guess-hint" class="mt-4 text-3xl font-black text-pink-500 h-10"></div>
+                <div class="text-gray-400 font-bold mt-4 text-sm">${histTitle}</div>
+                <div id="guess-history" class="mt-2 flex flex-wrap gap-2 justify-center max-w-sm min-h-[40px]"></div>
             `;
             document.getElementById('guess-btn').onclick = () => {
                 let val = parseInt(document.getElementById('guess-input').value);
                 let hint = document.getElementById('guess-hint');
+                let histBox = document.getElementById('guess-history');
+                
                 if(!val || val<1 || val>100) return;
+                
+                // 新增：檢查係咪已經估過
+                if(history.includes(val)) {
+                    hint.textContent = currentLang === 'zh' ? '估過啦！試第二個！' : 'Already guessed!';
+                    hint.classList.remove('animate-shake'); void hint.offsetWidth; hint.classList.add('animate-shake');
+                    document.getElementById('guess-input').value = '';
+                    return;
+                }
+                
                 attempts++;
+                history.push(val); // 加入紀錄
+                
+                // 新增：喺畫面上顯示估過嘅數字
+                histBox.innerHTML = history.map(n => `<span class="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-lg font-bold shadow-inner">${n}</span>`).join('');
+                
                 if(val === target) {
                     let t = currentLang === 'zh' ? `估咗 ${attempts} 次就中！` : `Got it in ${attempts} tries!`;
                     showModal('🎉', loc('correct'), t, initGuessNum);
@@ -268,6 +331,7 @@
                     hint.classList.remove('animate-shake'); void hint.offsetWidth; hint.classList.add('animate-shake');
                 }
                 document.getElementById('guess-input').value = '';
+                document.getElementById('guess-input').focus(); // 自動幫小朋友點擊返個輸入框
             };
         }
 
@@ -495,13 +559,21 @@
 
         // 8. Snake Game (Responsive Canvas)
         function initSnake() {
-            let pText = currentLang === 'zh' ? '滑動螢幕或用方向鍵控制蛇蛇🍎' : 'Swipe or use Arrow Keys to eat 🍎';
+            let pText = currentLang === 'zh' ? '用方向掣控制蛇蛇🍎' : 'Use controls to eat 🍎';
             gameArea.innerHTML = `
                 <div class="text-gray-500 font-bold mb-2 text-center text-sm">${pText}</div>
                 <div class="flex justify-between w-full max-w-[300px] mb-2 text-xl font-black">
                     <div class="text-amber-600">${loc('scoreText')}: <span id="snk-score">0</span></div>
                 </div>
-                <canvas id="snake-canvas" width="300" height="300" class="bg-green-100 border-4 border-green-500 rounded-lg shadow-inner touch-none"></canvas>
+                <canvas id="snake-canvas" width="300" height="300" class="bg-green-100 border-4 border-green-500 rounded-lg shadow-inner touch-none mb-4"></canvas>
+                <div class="grid grid-cols-3 gap-2 w-full max-w-[200px]">
+                    <div></div>
+                    <button id="snk-up" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬆️</button>
+                    <div></div>
+                    <button id="snk-left" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬅️</button>
+                    <button id="snk-down" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬇️</button>
+                    <button id="snk-right" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">➡️</button>
+                </div>
             `;
             
             const cvs = document.getElementById('snake-canvas');
@@ -554,32 +626,27 @@
             
             gameLoop = registerInterval(draw, 120);
             
+            function changeDir(newDx, newDy) {
+                if(newDx !== 0 && dx === 0) { dx = newDx; dy = 0; }
+                if(newDy !== 0 && dy === 0) { dx = 0; dy = newDy; }
+            }
+
             window.onkeydown = (e) => {
-                if(e.key==='ArrowUp' && dy===0) { dx=0; dy=-1; }
-                if(e.key==='ArrowDown' && dy===0) { dx=0; dy=1; }
-                if(e.key==='ArrowLeft' && dx===0) { dx=-1; dy=0; }
-                if(e.key==='ArrowRight' && dx===0) { dx=1; dy=0; }
+                if(e.key==='ArrowUp') changeDir(0, -1);
+                if(e.key==='ArrowDown') changeDir(0, 1);
+                if(e.key==='ArrowLeft') changeDir(-1, 0);
+                if(e.key==='ArrowRight') changeDir(1, 0);
             };
-            
-            // Touch Swipe Logic
-            let touchStartX = 0, touchStartY = 0;
-            cvs.addEventListener('touchstart', e => {
-                e.preventDefault();
-                touchStartX = e.changedTouches[0].screenX;
-                touchStartY = e.changedTouches[0].screenY;
-            }, {passive: false});
-            cvs.addEventListener('touchend', e => {
-                e.preventDefault();
-                let endX = e.changedTouches[0].screenX, endY = e.changedTouches[0].screenY;
-                let diffX = endX - touchStartX, diffY = endY - touchStartY;
-                if(Math.abs(diffX) > Math.abs(diffY)) {
-                    if(diffX > 30 && dx===0) { dx=1; dy=0; }
-                    else if(diffX < -30 && dx===0) { dx=-1; dy=0; }
-                } else {
-                    if(diffY > 30 && dy===0) { dx=0; dy=1; }
-                    else if(diffY < -30 && dy===0) { dx=0; dy=-1; }
-                }
-            }, {passive: false});
+
+            // On-screen D-Pad Controls for iPad/Mobile
+            const bindBtn = (id, nx, ny) => {
+                const btn = document.getElementById(id);
+                btn.onmousedown = btn.ontouchstart = (e) => { e.preventDefault(); changeDir(nx, ny); };
+            };
+            bindBtn('snk-up', 0, -1);
+            bindBtn('snk-down', 0, 1);
+            bindBtn('snk-left', -1, 0);
+            bindBtn('snk-right', 1, 0);
         }
 
         // 9. Whack-a-Mole (With Bombs)
@@ -595,12 +662,14 @@
             `;
             let bd = document.getElementById('m-board');
             for(let i=0; i<9; i++) {
-                let c = document.createElement('div'); c.className='ttt-cell overflow-hidden relative bg-green-800 border-4 border-green-900 cursor-pointer';
-                // Make the mole text ignore clicks so the container cell catches everything reliably
-                let m = document.createElement('div'); m.className='text-6xl absolute transition-transform duration-150 transform translate-y-full pointer-events-none'; 
+                let c = document.createElement('button'); // 改用 button 確保 iOS iPad 完全支援觸控
+                c.className='ttt-cell overflow-hidden relative bg-green-800 border-4 border-green-900 focus:outline-none w-full h-full block p-0 touch-manipulation cursor-pointer';
+                let m = document.createElement('div'); 
+                m.className='text-6xl absolute transition-transform duration-150 transform translate-y-full pointer-events-none inset-0 flex items-center justify-center'; 
                 
-                c.onclick = (e) => {
-                    e.stopPropagation(); 
+                // 同時綁定 touchstart 同 mousedown，實現零延遲點擊
+                c.onmousedown = c.ontouchstart = (e) => {
+                    e.preventDefault(); // 防止重複觸發
                     if(cur===i) { 
                         if(m.textContent === '💣') {
                             s = Math.max(0, s-2); // Penalty
