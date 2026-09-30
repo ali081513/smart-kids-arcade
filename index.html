@@ -92,7 +92,6 @@
             loadVoices(); 
         }
 
-        // Robust TTS Function
         function playTTS(zhText, enText) {
             if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel(); 
@@ -193,7 +192,7 @@
         function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
         function shuffle(arr) { return arr.sort(() => Math.random() - 0.5); }
 
-        // 1. Advanced Math (Double digits)
+        // 1. Advanced Math (Level 1 & 2)
         function initMath() {
             let score = 0, rounds = 0, mode = null;
             
@@ -249,15 +248,15 @@
                         optsGrid.appendChild(btn);
                     });
                 } else {
-                    // Level 2: iPad-friendly Virtual Numpad
+                    // Level 2: iPad-friendly Virtual Numpad (using onpointerdown for instant touch response)
                     gameArea.innerHTML = baseHTML + `
                         <div class="w-full max-w-xs flex flex-col items-center">
                             <div id="math-input" class="w-full h-16 bg-white border-4 border-yellow-400 rounded-2xl mb-4 text-4xl font-black flex items-center justify-center text-gray-800"></div>
                             <div class="grid grid-cols-3 gap-2 w-full mb-4">
-                                ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation" onclick="typeMath(${n})">${n}</button>`).join('')}
-                                <button class="btn-hover bg-red-100 border-b-4 border-red-300 text-xl font-black py-4 rounded-xl text-red-600 touch-manipulation" onclick="typeMath('C')">C</button>
-                                <button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation" onclick="typeMath(0)">0</button>
-                                <button class="btn-hover bg-green-100 border-b-4 border-green-300 text-2xl font-black py-4 rounded-xl text-green-700 touch-manipulation" onclick="submitMath(${ans})">OK</button>
+                                ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation select-none" onpointerdown="event.preventDefault(); typeMath(${n})">${n}</button>`).join('')}
+                                <button class="btn-hover bg-red-100 border-b-4 border-red-300 text-xl font-black py-4 rounded-xl text-red-600 touch-manipulation select-none" onpointerdown="event.preventDefault(); typeMath('C')">C</button>
+                                <button class="btn-hover bg-gray-100 border-b-4 border-gray-300 text-3xl font-black py-4 rounded-xl touch-manipulation select-none" onpointerdown="event.preventDefault(); typeMath(0)">0</button>
+                                <button class="btn-hover bg-green-100 border-b-4 border-green-300 text-2xl font-black py-4 rounded-xl text-green-700 touch-manipulation select-none" onpointerdown="event.preventDefault(); submitMath(${ans})">OK</button>
                             </div>
                         </div>
                     `;
@@ -289,7 +288,7 @@
         // 2. Guess Number (1-100)
         function initGuessNum() {
             let target = randInt(1, 100), attempts = 0;
-            let history = []; // 新增：用嚟儲存估過嘅數字
+            let history = []; 
             let prompt = currentLang === 'zh' ? '諗緊1到100... 估下係咩？' : 'Thinking of 1-100... Guess!';
             let btnTxt = currentLang === 'zh' ? '估！' : 'Guess';
             let histTitle = currentLang === 'zh' ? '估過嘅數字：' : 'Guessed Numbers:';
@@ -302,6 +301,7 @@
                 <div class="text-gray-400 font-bold mt-4 text-sm">${histTitle}</div>
                 <div id="guess-history" class="mt-2 flex flex-wrap gap-2 justify-center max-w-sm min-h-[40px]"></div>
             `;
+            
             document.getElementById('guess-btn').onclick = () => {
                 let val = parseInt(document.getElementById('guess-input').value);
                 let hint = document.getElementById('guess-hint');
@@ -309,7 +309,6 @@
                 
                 if(!val || val<1 || val>100) return;
                 
-                // 新增：檢查係咪已經估過
                 if(history.includes(val)) {
                     hint.textContent = currentLang === 'zh' ? '估過啦！試第二個！' : 'Already guessed!';
                     hint.classList.remove('animate-shake'); void hint.offsetWidth; hint.classList.add('animate-shake');
@@ -318,9 +317,8 @@
                 }
                 
                 attempts++;
-                history.push(val); // 加入紀錄
+                history.push(val); 
                 
-                // 新增：喺畫面上顯示估過嘅數字
                 histBox.innerHTML = history.map(n => `<span class="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-lg font-bold shadow-inner">${n}</span>`).join('');
                 
                 if(val === target) {
@@ -331,7 +329,7 @@
                     hint.classList.remove('animate-shake'); void hint.offsetWidth; hint.classList.add('animate-shake');
                 }
                 document.getElementById('guess-input').value = '';
-                document.getElementById('guess-input').focus(); // 自動幫小朋友點擊返個輸入框
+                document.getElementById('guess-input').focus(); 
             };
         }
 
@@ -355,21 +353,18 @@
             }
             function getBestMove() {
                 const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-                // Check if CPU can win
                 for(let l of lines) {
                     let [a,b,c] = l;
                     if(board[a]==='❌' && board[b]==='❌' && !board[c]) return c;
                     if(board[a]==='❌' && board[c]==='❌' && !board[b]) return b;
                     if(board[b]==='❌' && board[c]==='❌' && !board[a]) return a;
                 }
-                // Block Player
                 for(let l of lines) {
                     let [a,b,c] = l;
                     if(board[a]==='⭕' && board[b]==='⭕' && !board[c]) return c;
                     if(board[a]==='⭕' && board[c]==='⭕' && !board[b]) return b;
                     if(board[b]==='⭕' && board[c]==='⭕' && !board[a]) return a;
                 }
-                // Random center or edges
                 let e = board.map((c,idx)=>c===null?idx:null).filter(c=>c!==null);
                 if(e.includes(4)) return 4;
                 return e[randInt(0, e.length-1)];
@@ -438,7 +433,6 @@
                 let p2 = pieces[randInt(0, pieces.length-1)];
                 while(p1===p2) p2 = pieces[randInt(0, pieces.length-1)];
                 
-                // Formats: A B A B, A A B A A B, A B B A B B
                 let patterns = [
                     [p1, p2, p1, p2, p1, p2],
                     [p1, p1, p2, p1, p1, p2],
@@ -557,7 +551,7 @@
             nextQ();
         }
 
-        // 8. Snake Game (Responsive Canvas)
+        // 8. Snake Game (Responsive Canvas & onpointerdown D-pad)
         function initSnake() {
             let pText = currentLang === 'zh' ? '用方向掣控制蛇蛇🍎' : 'Use controls to eat 🍎';
             gameArea.innerHTML = `
@@ -568,11 +562,11 @@
                 <canvas id="snake-canvas" width="300" height="300" class="bg-green-100 border-4 border-green-500 rounded-lg shadow-inner touch-none mb-4"></canvas>
                 <div class="grid grid-cols-3 gap-2 w-full max-w-[200px]">
                     <div></div>
-                    <button id="snk-up" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬆️</button>
+                    <button id="snk-up" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none touch-manipulation">⬆️</button>
                     <div></div>
-                    <button id="snk-left" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬅️</button>
-                    <button id="snk-down" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">⬇️</button>
-                    <button id="snk-right" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none">➡️</button>
+                    <button id="snk-left" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none touch-manipulation">⬅️</button>
+                    <button id="snk-down" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none touch-manipulation">⬇️</button>
+                    <button id="snk-right" class="bg-blue-100 border-b-4 border-blue-300 text-3xl p-4 rounded-xl btn-hover flex items-center justify-center select-none touch-manipulation">➡️</button>
                 </div>
             `;
             
@@ -587,13 +581,11 @@
             function draw() {
                 let head = {x: snake[0].x + dx, y: snake[0].y + dy};
                 
-                // Wrap around edges
                 if(head.x < 0) head.x = tileCount-1;
                 if(head.x >= tileCount) head.x = 0;
                 if(head.y < 0) head.y = tileCount-1;
                 if(head.y >= tileCount) head.y = 0;
 
-                // Check collision with self
                 if(dx !== 0 || dy !== 0) {
                     for(let i=0; i<snake.length; i++) {
                         if(head.x === snake[i].x && head.y === snake[i].y) {
@@ -612,13 +604,13 @@
                     if(dx !== 0 || dy !== 0) snake.pop();
                 }
                 
-                ctx.fillStyle = '#dcfce7'; // green-100
+                ctx.fillStyle = '#dcfce7'; 
                 ctx.fillRect(0,0, cvs.width, cvs.height);
                 
-                ctx.fillStyle = '#ef4444'; // red-500 food
+                ctx.fillStyle = '#ef4444'; 
                 ctx.fillRect(food.x*gridSize, food.y*gridSize, gridSize-2, gridSize-2);
                 
-                ctx.fillStyle = '#22c55e'; // green-500 snake
+                ctx.fillStyle = '#22c55e'; 
                 snake.forEach(p => {
                     ctx.fillRect(p.x*gridSize, p.y*gridSize, gridSize-2, gridSize-2);
                 });
@@ -638,10 +630,10 @@
                 if(e.key==='ArrowRight') changeDir(1, 0);
             };
 
-            // On-screen D-Pad Controls for iPad/Mobile
+            // Using onpointerdown for instant touch response on iPad
             const bindBtn = (id, nx, ny) => {
                 const btn = document.getElementById(id);
-                btn.onmousedown = btn.ontouchstart = (e) => { e.preventDefault(); changeDir(nx, ny); };
+                btn.onpointerdown = (e) => { e.preventDefault(); changeDir(nx, ny); };
             };
             bindBtn('snk-up', 0, -1);
             bindBtn('snk-down', 0, 1);
@@ -649,7 +641,7 @@
             bindBtn('snk-right', 1, 0);
         }
 
-        // 9. Whack-a-Mole (With Bombs)
+        // 9. Whack-a-Mole (Zero Delay onpointerdown for iPad)
         function initMole() {
             let s=0, t=20, cur=-1;
             gameArea.innerHTML = `
@@ -658,44 +650,72 @@
                     <div class="text-red-500">⏳ <span id="m-time">20</span>s</div>
                     <div class="text-amber-600">${loc('scoreText')}: <span id="m-score">0</span></div>
                 </div>
-                <div class="board-3x3 bg-green-300 p-4 rounded-[2rem] shadow-inner" id="m-board"></div>
+                <div class="grid grid-cols-3 gap-4 w-full max-w-[320px] bg-green-500 p-4 rounded-[2rem] shadow-inner" id="m-board"></div>
             `;
             let bd = document.getElementById('m-board');
+            let moles = [];
+            let holes = [];
+
             for(let i=0; i<9; i++) {
-                let c = document.createElement('button'); // 改用 button 確保 iOS iPad 完全支援觸控
-                c.className='ttt-cell overflow-hidden relative bg-green-800 border-4 border-green-900 focus:outline-none w-full h-full block p-0 touch-manipulation cursor-pointer';
-                let m = document.createElement('div'); 
-                m.className='text-6xl absolute transition-transform duration-150 transform translate-y-full pointer-events-none inset-0 flex items-center justify-center'; 
-                
-                // 同時綁定 touchstart 同 mousedown，實現零延遲點擊
-                c.onmousedown = c.ontouchstart = (e) => {
-                    e.preventDefault(); // 防止重複觸發
-                    if(cur===i) { 
-                        if(m.textContent === '💣') {
+                let hole = document.createElement('div');
+                // Distinct hole shape for perfect clicking area
+                hole.className = 'w-full aspect-square bg-green-900 rounded-full overflow-hidden relative border-4 border-green-800 shadow-inner flex justify-center items-end cursor-pointer touch-manipulation select-none';
+
+                let mole = document.createElement('div');
+                // Use bottom for popping up animation
+                mole.className = 'text-6xl absolute transition-all duration-150 ease-out pointer-events-none select-none';
+                mole.style.bottom = '-100%'; // Start hidden
+                mole.textContent = '🐹';
+
+                // onpointerdown completely replaces touchstart/mousedown conflicts
+                hole.onpointerdown = (e) => {
+                    e.preventDefault(); // Stop screen zoom/scroll
+                    if(cur === i) {
+                        if(mole.textContent === '💣') {
                             s = Math.max(0, s-2); // Penalty
-                            c.classList.add('bg-red-500'); setTimeout(()=>c.classList.remove('bg-red-500'), 200);
+                            hole.classList.add('bg-red-500'); setTimeout(()=>hole.classList.remove('bg-red-500'), 200);
                         } else {
-                            s++; 
-                            c.classList.add('bg-yellow-300'); setTimeout(()=>c.classList.remove('bg-yellow-300'), 150);
+                            s++;
+                            hole.classList.add('bg-yellow-300'); setTimeout(()=>hole.classList.remove('bg-yellow-300'), 150);
                         }
-                        document.getElementById('m-score').textContent=s; 
-                        m.style.transform='translate-y-full'; cur=-1; 
+                        document.getElementById('m-score').textContent = s;
+                        mole.style.bottom = '-100%'; // Hide immediately
+                        cur = -1;
                     }
                 };
-                c.appendChild(m); bd.appendChild(c);
+
+                hole.appendChild(mole);
+                bd.appendChild(hole);
+                holes.push(hole);
+                moles.push(mole);
             }
-            let ch = bd.children;
-            registerInterval(()=>{ t--; document.getElementById('m-time').textContent=t; if(t<=0){clearAllTimers();showModal('🔨', loc('done'), `${loc('scoreText')}: ${s}`, initMole);} }, 1000);
-            registerInterval(()=>{ 
-                if(t<=0) return; 
-                if(cur!==-1) ch[cur].children[0].style.transform='translate-y-full'; 
-                cur = randInt(0,8); 
-                ch[cur].children[0].textContent = Math.random() > 0.25 ? '🐹' : '💣';
-                ch[cur].children[0].style.transform='translate-y-0'; 
+
+            registerInterval(()=>{
+                t--;
+                let tm = document.getElementById('m-time');
+                if(tm) tm.textContent=t;
+                if(t<=0){
+                    clearAllTimers();
+                    showModal('🔨', loc('done'), `${loc('scoreText')}: ${s}`, initMole);
+                }
+            }, 1000);
+
+            registerInterval(()=>{
+                if(t<=0) return;
+                // Hide old mole
+                if(cur !== -1 && moles[cur]) {
+                    moles[cur].style.bottom = '-100%'; 
+                }
+                // Pop new mole
+                cur = randInt(0,8);
+                if(moles[cur]) {
+                    moles[cur].textContent = Math.random() > 0.25 ? '🐹' : '💣';
+                    moles[cur].style.bottom = '5%'; 
+                }
             }, 800);
         }
 
-        // 10. Learn Chinese (Web Speech API)
+        // 10. Learn Chinese (52 Words & No-Repeat Queue)
         const fullVocab = [
             { c: '蘋果', e: '🍎', en: 'Apple' }, { c: '香蕉', e: '🍌', en: 'Banana' },
             { c: '大象', e: '🐘', en: 'Elephant' }, { c: '獅子', e: '🦁', en: 'Lion' },
@@ -719,7 +739,7 @@
             { c: '鞋子', e: '👟', en: 'Shoes' }, { c: '帽子', e: '🧢', en: 'Hat' },
             { c: '眼鏡', e: '👓', en: 'Glasses' }, { c: '電腦', e: '💻', en: 'Computer' },
             { c: '電話', e: '📱', en: 'Phone' }, { c: '電視', e: '📺', en: 'TV' },
-            { c: '書', e: '📖', en: 'Book' }, { c: '筆', e: '✏️', en: 'Pen' },
+            { c: '書', e: '📖', en: 'Book' }, { c: '筆', e: '✏️️', en: 'Pen' },
             { c: '剪刀', e: '✂️', en: 'Scissors' }, { c: '麵包', e: '🍞', en: 'Bread' },
             { c: '雞蛋', e: '🥚', en: 'Egg' }, { c: '牛奶', e: '🥛', en: 'Milk' },
             { c: '水', e: '💧', en: 'Water' }, { c: '火', e: '🔥', en: 'Fire' }
@@ -735,7 +755,6 @@
                 }
                 rounds++;
                 
-                // Fetch next word without repeating until the queue is empty
                 if(vocabQueue.length === 0) {
                     vocabQueue = shuffle([...fullVocab]); 
                 }
@@ -754,21 +773,21 @@
                     <div class="grid grid-cols-2 gap-4 w-full max-w-sm" id="lc-opts"></div>
                 `;
 
-                // Fill the 3 wrong options from the full pool
                 let optsSet = new Set([target]);
                 while(optsSet.size < 4) optsSet.add(fullVocab[randInt(0, fullVocab.length-1)]);
                 
                 const optsBox = document.getElementById('lc-opts');
                 shuffle(Array.from(optsSet)).forEach(item => {
                     const btn = document.createElement('button');
-                    btn.className = 'btn-hover bg-white border-4 border-green-200 text-green-700 py-4 rounded-3xl shadow-sm font-["Noto_Sans_HK"] flex flex-col items-center justify-center gap-2';
+                    btn.className = 'btn-hover bg-white border-4 border-green-200 text-green-700 py-4 rounded-3xl shadow-sm font-["Noto_Sans_HK"] flex flex-col items-center justify-center gap-2 touch-manipulation select-none';
                     
                     btn.innerHTML = `
                         <span class="text-5xl font-black">${item.c}</span>
                         <span class="bg-green-100 text-green-600 text-lg rounded-full w-10 h-10 flex items-center justify-center shadow-inner hover:bg-green-200 transition">🔊</span>
                     `;
                     
-                    btn.onclick = () => {
+                    btn.onpointerdown = (e) => {
+                        e.preventDefault();
                         playTTS(item.c, item.en);
                         setTimeout(() => {
                             if(item.c === target.c) {
