@@ -641,78 +641,134 @@
             bindBtn('snk-right', 1, 0);
         }
 
-        // 9. Whack-a-Mole (Zero Delay onpointerdown for iPad)
+        // 9. Whack-a-Mole (Levels, Speedup & Leaderboard)
         function initMole() {
-            let s=0, t=20, cur=-1;
-            gameArea.innerHTML = `
-                <div class="text-gray-500 font-bold mb-2">${currentLang==='zh'?'打 🐹，唔好打 💣！':'Hit 🐹, Avoid 💣!'}</div>
-                <div class="flex justify-between w-full max-w-[320px] mb-6 text-2xl font-black">
-                    <div class="text-red-500">⏳ <span id="m-time">20</span>s</div>
-                    <div class="text-amber-600">${loc('scoreText')}: <span id="m-score">0</span></div>
-                </div>
-                <div class="grid grid-cols-3 gap-4 w-full max-w-[320px] bg-green-500 p-4 rounded-[2rem] shadow-inner" id="m-board"></div>
-            `;
-            let bd = document.getElementById('m-board');
-            let moles = [];
-            let holes = [];
-
-            for(let i=0; i<9; i++) {
-                let hole = document.createElement('div');
-                // Distinct hole shape for perfect clicking area
-                hole.className = 'w-full aspect-square bg-green-900 rounded-full overflow-hidden relative border-4 border-green-800 shadow-inner flex justify-center items-end cursor-pointer touch-manipulation select-none';
-
-                let mole = document.createElement('div');
-                // Use bottom for popping up animation
-                mole.className = 'text-6xl absolute transition-all duration-150 ease-out pointer-events-none select-none';
-                mole.style.bottom = '-100%'; // Start hidden
-                mole.textContent = '🐹';
-
-                // onpointerdown completely replaces touchstart/mousedown conflicts
-                hole.onpointerdown = (e) => {
-                    e.preventDefault(); // Stop screen zoom/scroll
-                    if(cur === i) {
-                        if(mole.textContent === '💣') {
-                            s = Math.max(0, s-2); // Penalty
-                            hole.classList.add('bg-red-500'); setTimeout(()=>hole.classList.remove('bg-red-500'), 200);
-                        } else {
-                            s++;
-                            hole.classList.add('bg-yellow-300'); setTimeout(()=>hole.classList.remove('bg-yellow-300'), 150);
-                        }
-                        document.getElementById('m-score').textContent = s;
-                        mole.style.bottom = '-100%'; // Hide immediately
-                        cur = -1;
-                    }
-                };
-
-                hole.appendChild(mole);
-                bd.appendChild(hole);
-                holes.push(hole);
-                moles.push(mole);
+            function showMenu() {
+                gameArea.innerHTML = `
+                    <div class="text-3xl font-black mb-8 text-gray-700">${currentLang==='zh'?'揀難度同睇紀錄！':'Select Level & Records'}</div>
+                    <div class="flex flex-col gap-4 w-full max-w-sm">
+                        <button class="btn-hover bg-green-100 border-4 border-green-300 text-green-700 font-black text-2xl py-4 rounded-3xl" onclick="startMole(1)">Level 1 (正常速度)</button>
+                        <button class="btn-hover bg-red-100 border-4 border-red-300 text-red-700 font-black text-2xl py-4 rounded-3xl" onclick="startMole(2)">Level 2 (愈嚟愈快！)</button>
+                        <button class="btn-hover bg-blue-100 border-4 border-blue-300 text-blue-700 font-black text-xl py-4 rounded-3xl mt-4" onclick="showRecords()">🏆 睇紀錄 (Leaderboard)</button>
+                    </div>
+                `;
             }
 
-            registerInterval(()=>{
-                t--;
-                let tm = document.getElementById('m-time');
-                if(tm) tm.textContent=t;
-                if(t<=0){
-                    clearAllTimers();
-                    showModal('🔨', loc('done'), `${loc('scoreText')}: ${s}`, initMole);
-                }
-            }, 1000);
+            window.showRecords = () => {
+                let recs = JSON.parse(localStorage.getItem('moleRecords') || '[]');
+                let list = recs.length > 0 ? recs.map((r,i) => `<div class="flex justify-between items-center bg-white p-3 rounded-xl mb-2 shadow-sm border-2 border-gray-100"><span class="font-bold text-gray-700">${i+1}. ${r.name} <span class="text-xs text-gray-400 ml-1">(Lv ${r.level})</span></span><span class="font-black text-blue-500 text-xl">${r.score} 分</span></div>`).join('') : `<div class="text-gray-500 font-bold text-center mt-8">${currentLang==='zh'?'暫時未有紀錄！':'No records yet!'}</div>`;
+                
+                gameArea.innerHTML = `
+                    <div class="text-3xl font-black mb-6 text-gray-700">🏆 英雄榜</div>
+                    <div class="w-full max-w-sm bg-gray-50 p-4 rounded-3xl shadow-inner mb-6 h-64 overflow-y-auto">
+                        ${list}
+                    </div>
+                    <button class="btn-hover bg-gray-200 text-gray-700 font-black px-8 py-3 rounded-full shadow" onclick="initMole()">⬅️ 返回</button>
+                `;
+            }
 
-            registerInterval(()=>{
-                if(t<=0) return;
-                // Hide old mole
-                if(cur !== -1 && moles[cur]) {
-                    moles[cur].style.bottom = '-100%'; 
+            window.startMole = (level) => {
+                let s=0, t=20, cur=-1, speed = 800; // speed: 彈出速度 (毫秒)
+                
+                gameArea.innerHTML = `
+                    <div class="text-gray-500 font-bold mb-2">${currentLang==='zh'?'打 🐹，唔好打 💣！':'Hit 🐹, Avoid 💣!'}</div>
+                    <div class="flex justify-between w-full max-w-[320px] mb-6 text-2xl font-black">
+                        <div class="text-red-500">⏳ <span id="m-time">20</span>s</div>
+                        <div class="text-amber-600">${loc('scoreText')}: <span id="m-score">0</span></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 w-full max-w-[320px] bg-green-500 p-4 rounded-[2rem] shadow-inner" id="m-board"></div>
+                `;
+                let bd = document.getElementById('m-board');
+                let moles = []; let holes = [];
+
+                for(let i=0; i<9; i++) {
+                    let hole = document.createElement('div');
+                    hole.className = 'w-full aspect-square bg-green-900 rounded-full overflow-hidden relative border-4 border-green-800 shadow-inner flex justify-center items-end cursor-pointer touch-manipulation select-none';
+                    let mole = document.createElement('div');
+                    mole.className = 'text-6xl absolute transition-all duration-150 ease-out pointer-events-none select-none';
+                    mole.style.bottom = '-100%'; 
+                    mole.textContent = '🐹';
+
+                    hole.onpointerdown = (e) => {
+                        e.preventDefault(); 
+                        if(cur === i) {
+                            if(mole.textContent === '💣') {
+                                s = Math.max(0, s-2); // 扣分機制
+                                hole.classList.add('bg-red-500'); setTimeout(()=>hole.classList.remove('bg-red-500'), 200);
+                            } else {
+                                s++;
+                                hole.classList.add('bg-yellow-300'); setTimeout(()=>hole.classList.remove('bg-yellow-300'), 150);
+                            }
+                            document.getElementById('m-score').textContent = s;
+                            mole.style.bottom = '-100%'; 
+                            cur = -1;
+                        }
+                    };
+                    hole.appendChild(mole); bd.appendChild(hole);
+                    holes.push(hole); moles.push(mole);
                 }
-                // Pop new mole
-                cur = randInt(0,8);
-                if(moles[cur]) {
-                    moles[cur].textContent = Math.random() > 0.25 ? '🐹' : '💣';
-                    moles[cur].style.bottom = '5%'; 
+
+                // 倒數計時與加速機制
+                registerInterval(()=>{
+                    t--;
+                    let tm = document.getElementById('m-time');
+                    if(tm) tm.textContent=t;
+                    if(t<=0){
+                        clearAllTimers();
+                        endGame(s, level);
+                    }
+                    // Level 2 加速機制: 每過 3 秒，速度減 80ms (最快極限 300ms)
+                    if(level === 2 && t % 3 === 0 && speed > 300) {
+                        speed -= 80; 
+                    }
+                }, 1000);
+
+                function popMole() {
+                    if(t<=0) return;
+                    if(cur !== -1 && moles[cur]) {
+                        moles[cur].style.bottom = '-100%'; 
+                    }
+                    cur = randInt(0,8);
+                    if(moles[cur]) {
+                        moles[cur].textContent = Math.random() > 0.25 ? '🐹' : '💣';
+                        moles[cur].style.bottom = '5%'; 
+                    }
+                    // 使用動態 setTimeout 取代 setInterval 以配合加速
+                    let tid = setTimeout(popMole, speed);
+                    activeTimeouts.push(tid);
                 }
-            }, 800);
+                popMole();
+            };
+
+            function endGame(score, level) {
+                gameArea.innerHTML = `
+                    <div class="text-6xl mb-4 animate-bounce">🔨</div>
+                    <div class="text-3xl font-black text-gray-700 mb-2">時間到！</div>
+                    <div class="text-2xl font-bold text-blue-500 mb-6">你攞到 <span class="text-5xl text-amber-500 mx-2">${score}</span> 分！</div>
+                    <div class="w-full max-w-xs flex flex-col gap-4 bg-yellow-50 p-6 rounded-3xl border-4 border-yellow-200">
+                        <div class="text-lg font-bold text-gray-600">留低你個大名啦：</div>
+                        <input type="text" id="playerName" placeholder="例如：軒仔..." class="text-center border-4 border-yellow-400 py-3 rounded-2xl text-xl font-bold outline-none focus:border-orange-500">
+                        <button class="btn-hover bg-yellow-400 text-yellow-900 font-black text-xl py-3 rounded-full shadow-lg border-b-4 border-yellow-600 mt-2" onclick="saveRecord(${score}, ${level})">儲存紀錄 💾</button>
+                    </div>
+                    <button class="btn-hover bg-gray-200 text-gray-700 font-bold text-lg px-8 py-2 rounded-full mt-6 shadow" onclick="initMole()">唔儲存，返去</button>
+                `;
+            }
+
+            window.saveRecord = (score, level) => {
+                let name = document.getElementById('playerName').value.trim();
+                if(!name) name = '神秘高手'; // 預設名
+                
+                let recs = JSON.parse(localStorage.getItem('moleRecords') || '[]');
+                recs.push({name, score, level});
+                // 由高至低排序
+                recs.sort((a,b) => b.score - a.score);
+                recs = recs.slice(0, 10); // 只保留頭 10 名
+                
+                localStorage.setItem('moleRecords', JSON.stringify(recs));
+                showRecords();
+            };
+
+            showMenu();
         }
 
         // 10. Learn Chinese (52 Words & No-Repeat Queue)
